@@ -1,53 +1,44 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:unicash/models/types.dart';
+import 'package:unicash/providers/auth_provider.dart';
+import 'package:unicash/providers/perfil_provider.dart';
+import 'package:unicash/screens/acerda_de.dart';
+import 'package:unicash/screens/editar_perfil.dart';
+import 'package:unicash/screens/privacidad.dart';
 import 'package:unicash/utils/constants.dart';
+import 'package:unicash/utils/persistencia.dart';
 
 import '../widget/profile_account_info_tile.dart';
 
-class HomeProfileTab extends StatelessWidget {
+class HomeProfileTab extends HookConsumerWidget {
   const HomeProfileTab({super.key});
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Cerrar sesión'),
-          content: Text('¿Estás seguro de que deseas cerrar sesión?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                // Aquí puedes implementar la lógica para cerrar la sesión del usuario
-                // Por ejemplo, puedes utilizar Firebase Authentication para cerrar la sesión.
-                Navigator.pop(context); // Cierra el cuadro de diálogo
-              },
-              child: Text('Aceptar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Cierra el cuadro de diálogo
-              },
-              child: Text('Cancelar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = Persistencia();
+
+    final usuario = useState<Usuario>((
+      nombres: prefs.nombres,
+      apellidos: prefs.apellidos,
+      fechaNacimiento: prefs.fechaNacimiento,
+      email: prefs.correo,
+      imagenPerfilBase64: prefs.imagenPerfilBase64,
+    ));
+
     Size size = MediaQuery.of(context).size;
     return Scaffold(
         appBar: AppBar(
           elevation: 0,
           backgroundColor: background,
-          leading: const Icon(
-            Icons.arrow_back_ios,
-            color: fontSubHeading,
-          ),
           actions: [
             Padding(
-              padding: EdgeInsets.only(right: defaultSpacing),
+              padding: const EdgeInsets.only(right: defaultSpacing),
               child: PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'logout') {
@@ -56,7 +47,7 @@ class HomeProfileTab extends StatelessWidget {
                 },
                 itemBuilder: (BuildContext context) {
                   return [
-                    PopupMenuItem<String>(
+                    const PopupMenuItem<String>(
                       value: 'logout',
                       child: Text('Cerrar sesión'),
                     ),
@@ -80,102 +71,148 @@ class HomeProfileTab extends StatelessWidget {
                 child: Column(
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.all(
-                          Radius.circular(defaultRadius)),
-                      child: Image.asset(
-                        "/Users/carlosmoya/Desktop/flutter/unicash/assets/icons/carlosmoya.jpg",
-                        width: 100,
-                      ),
-                    ),
+                        borderRadius: const BorderRadius.all(
+                            Radius.circular(defaultRadius)),
+                        child: InkWell(
+                          onTap: () async {
+                            if (await Permission.photos.request().isGranted) {
+                              final ImagePicker picker = ImagePicker();
+
+                              final XFile? image = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                requestFullMetadata: false,
+                              );
+                              if (image != null) {
+                                final resp = await ref.read(
+                                    actualizarFotoPerfilProvider(image).future);
+                                if (resp.error && context.mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(resp.message!),
+                                  ));
+                                } else {
+                                  usuario.value = ((
+                                    nombres: prefs.nombres,
+                                    apellidos: prefs.apellidos,
+                                    fechaNacimiento: prefs.fechaNacimiento,
+                                    email: prefs.correo,
+                                    imagenPerfilBase64:
+                                        prefs.imagenPerfilBase64,
+                                  ));
+                                }
+                              }
+                            }
+                          },
+                          child: usuario.value.imagenPerfilBase64.isEmpty
+                              ? Icon(
+                                  Icons.person,
+                                  size: size.width * 0.1,
+                                )
+                              : Image.memory(
+                                  base64Decode(
+                                      usuario.value.imagenPerfilBase64),
+                                  width: size.width * 0.2,
+                                  height: size.width * 0.2,
+                                  fit: BoxFit.cover,
+                                ),
+                        )),
                     Text(
-                      "Carlos Moya",
+                      "${usuario.value.nombres} ${usuario.value.apellidos}",
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800, color: fontHeading),
                     ),
+                    const SizedBox(
+                      height: 5,
+                    ),
                     Text(
-                      "e1311582033@live.uleam.edu.ec",
+                      usuario.value.email,
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
                           ?.copyWith(color: fontSubHeading),
                     ),
-                    const Chip(
-                      backgroundColor: primaryLight,
-                      label: Text("Editar Perfil"),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    InkWell(
+                      onTap: () async {
+                        final resp = await Navigator.push<Usuario?>(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const EditarUsuarioPage()));
+                        if (resp != null) {
+                          usuario.value = resp;
+                        }
+                      },
+                      child: const Chip(
+                        backgroundColor: primaryLight,
+                        label: Text("Editar Perfil"),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: defaultSpacing),
-                    child: Text(
-                      "General",
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w700, color: fontHeading),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: defaultSpacing,
-                  ),
-                  const GeneralAccountInfoTile(
-                      title: "Mi Billetera",
-                      subTitle: "Administra tu billetera guardada",
-                      imageUrl:
-                          "/Users/carlosmoya/Desktop/flutter/unicash/assets/icons/billetera_logo.png"),
-                  const SizedBox(
-                    height: defaultSpacing,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: defaultSpacing),
-                    child: Text(
-                      "Cuenta",
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: fontHeading,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: defaultSpacing / 2,
-                  ),
-                  const ProfileAccountInfoTile(
-                      iconUrl:
-                          "/Users/carlosmoya/Desktop/flutter/unicash/assets/icons/person.png",
-                      heading: "Mi Cuenta"),
-                  const SizedBox(
-                    height: defaultSpacing,
-                  ),
-                  const ProfileAccountInfoTile(
-                      iconUrl:
-                          "/Users/carlosmoya/Desktop/flutter/unicash/assets/icons/notificaciones.png",
-                      heading: "Notificaciones"),
-                  const SizedBox(
-                    height: defaultSpacing,
-                  ),
-                  const ProfileAccountInfoTile(
-                      iconUrl:
-                          "/Users/carlosmoya/Desktop/flutter/unicash/assets/icons/privacidad.png",
-                      heading: "Privacidad"),
-                  const SizedBox(
-                    height: defaultSpacing,
-                  ),
-                  const ProfileAccountInfoTile(
-                      iconUrl:
-                          "/Users/carlosmoya/Desktop/flutter/unicash/assets/icons/acerca_de.png",
-                      heading: "Acerca De"),
-                  const SizedBox(
-                    height: defaultSpacing,
-                  ),
-                ],
-              ),
+            const Spacer(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ProfileAccountInfoTile(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) {
+                        return const Privacidad();
+                      }));
+                    },
+                    icono: Icons.security,
+                    heading: "Privacidad"),
+                const SizedBox(
+                  height: defaultSpacing,
+                ),
+                ProfileAccountInfoTile(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) {
+                        return const AcercaDe();
+                      }));
+                    },
+                    icono: Icons.info_outline,
+                    heading: "Acerca De"),
+                const SizedBox(
+                  height: defaultSpacing,
+                ),
+              ],
             )
           ],
         )));
   }
+}
+
+void _showLogoutDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Cierra el cuadro de diálogo
+            },
+            child: const Text('Cancelar'),
+          ),
+          Consumer(
+            builder: (context, ref, child) {
+              return TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Cierra el cuadro de diálogo
+                  ref.read(authProviderProvider.notifier).logout();
+                },
+                child: const Text('Aceptar'),
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
 }

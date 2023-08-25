@@ -1,54 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:unicash/providers/pagina_actual_provider.dart';
 import 'package:unicash/screens/add.dart';
 import 'package:unicash/screens/home_profile_tab.dart';
 import 'package:unicash/screens/home_screen_tab.dart';
 import 'package:unicash/screens/statistics.dart';
-import 'package:unicash/screens/tarjetas.dart';
 import 'package:unicash/utils/constants.dart';
 
-class MainScreenHost extends StatefulWidget {
+class MainScreenHost extends ConsumerWidget {
   const MainScreenHost({Key? key}) : super(key: key);
 
   @override
-  State<MainScreenHost> createState() => _MainScreenHostState();
-}
-
-class _MainScreenHostState extends State<MainScreenHost> {
-  var currentIndex = 0;
-
-  Widget buildTabContent(int index) {
-    switch (index) {
-      case 0:
-        return const HomeScreenTab();
-      case 1:
-        return CreditCardScreen();
-      case 2:
-        return AddTransactionScreen();
-      case 3:
-        return const Statistics();
-      case 4:
-        return const HomeProfileTab();
-      default:
-        return const HomeScreenTab();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(paginaActualProvider);
     return Scaffold(
-      body: buildTabContent(currentIndex),
+      body: switch (currentIndex) {
+        0 => const HomeScreenTab(),
+        1 => const AddTransactionScreen(),
+        2 => const Statistics(),
+        3 => const HomeProfileTab(),
+        _ => const HomeScreenTab(),
+      },
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
+          ref.read(paginaActualProvider.notifier).cambiarPagina(index);
         },
         selectedItemColor: secondaryDark,
         unselectedItemColor: fontLight,
-        items: [
+        items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.wallet), label: "Billetera"),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Añadir"),
           BottomNavigationBarItem(
               icon: Icon(Icons.assessment), label: "Estadisticas"),

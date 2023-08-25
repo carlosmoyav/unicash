@@ -1,43 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:unicash/models/transaccion.dart';
 
-class Chart extends StatefulWidget {
-  const Chart({super.key});
+class Chart extends HookConsumerWidget {
+  const Chart({required this.transacciones, super.key});
+  final List<Transaction> transacciones;
 
   @override
-  State<Chart> createState() => _ChartState();
-}
-
-class _ChartState extends State<Chart> {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
       width: double.infinity,
       height: 300,
       child: SfCartesianChart(
         primaryXAxis: CategoryAxis(),
-        series: <SplineSeries<SalesData, String>>[
-          SplineSeries<SalesData, String>(
-            color: Color.fromARGB(255, 47, 125, 121),
+        series: <SplineSeries<Transaction, String>>[
+          SplineSeries<Transaction, String>(
+            color: const Color.fromARGB(255, 47, 125, 121),
             width: 3,
-            dataSource: <SalesData>[
-              SalesData(100, 'lun'),
-              SalesData(20, 'mar'),
-              SalesData(40, 'mie'),
-              SalesData(15, 'sab'),
-              SalesData(5, 'dom'),
-            ],
-            xValueMapper: (SalesData sales, _) => sales.year,
-            yValueMapper: (SalesData sales, _) => sales.sales,
+            dataSource: transacciones,
+            xValueMapper: (Transaction sales, _) => sales.date,
+            yValueMapper: (Transaction sales, _) => sales.amount,
           )
         ],
       ),
     );
   }
-}
-
-class SalesData {
-  SalesData(this.sales, this.year);
-  final String year;
-  final int sales;
 }
