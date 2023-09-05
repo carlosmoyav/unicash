@@ -13,10 +13,12 @@ FutureOr<String?> addMovimiento(
     DateTime fecha,
     String descripcion,
     String metodoPago) async {
+  final dia =
+      fecha.day.toString().length == 1 ? '0${fecha.day}' : fecha.day.toString();
   final mes = fecha.month.toString().length == 1
       ? '0${fecha.month}'
       : fecha.month.toString();
-  final fechaParseada = '${fecha.year}-$mes-${fecha.day}';
+  final fechaParseada = '${fecha.year}-$mes-${dia}';
   final response = await BilleteraController().agregarMovimiento({
     "categoria": categoria,
     "monto": monto,

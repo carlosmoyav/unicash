@@ -5,7 +5,7 @@ import 'package:unicash/utils/persistencia.dart';
 
 @immutable
 class Conexion {
-  static String get backend => 'http://192.168.100.61:3000/api';
+  static String get backend => 'http://204.48.28.226:3000/api';
   static Map<String, String> get headerAuth {
     return {'authorization': 'Bearer ${Persistencia().token}'};
   }
